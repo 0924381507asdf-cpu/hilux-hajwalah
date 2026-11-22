@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>هجولة هايلكس 2026</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="loading">جاري تحميل الهايلكس... <span id="progress">0%</span></div>
+    
+    <!-- واجهة العدادات -->
+    <div id="hud">
+        <div class="stat-box">السرعة: <span id="speed">0</span> كم/س</div>
+        <div class="stat-box drift-box">نقاط الهجولة: <span id="drift-score">0</span></div>
+        <button id="cam-btn">تغيير الكاميرا</button>
+    </div>
+
+    <!-- أزرار التحكم للهاتف -->
+    <div id="controls">
+        <div class="steer-group">
+            <button id="btn-left" class="ctrl-btn">◀</button>
+            <button id="btn-right" class="ctrl-btn">▶</button>
+        </div>
+        <div class="pedal-group">
+            <button id="btn-handbrake" class="ctrl-btn brake">جلنط</button>
+            <button id="btn-brake" class="ctrl-btn">فرامل</button>
+            <button id="btn-gas" class="ctrl-btn gas">بنزين</button>
+        </div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+</html>
