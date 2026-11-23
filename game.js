@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// عدّل هذه القيمة إذا كانت مقدمة السيارة لا تطابق اتجاه الحركة:
-// 0 | Math.PI / 2 | -Math.PI / 2 | Math.PI
-const MODEL_Y_OFFSET = 0;
+// ضبط دوران المجسم 180 درجة ليواجه الأمام في نفس اتجاه الحركة
+const MODEL_Y_OFFSET = Math.PI;
 
 // 1. إعداد المشهد والإضاءة الاحترافية
 const scene = new THREE.Scene();
@@ -33,7 +32,7 @@ const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
 rimLight.position.set(-40, 30, -50);
 scene.add(rimLight);
 
-// 2. مضمار الهجولة: أسفلت + أرصفة + حواجز + محيط
+// 2. مضمار الهجولة: أسفلت + أرصفة + خطوط + محيط
 const roadWidth = 44;
 const roadLength = 2400;
 
@@ -43,7 +42,6 @@ const road = new THREE.Mesh(roadGeo, roadMat);
 road.rotation.x = -Math.PI / 2;
 scene.add(road);
 
-// حواف الطريق وأرصفة جانبية
 const curbGeo = new THREE.BoxGeometry(1.2, 0.35, roadLength);
 const curbMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.6 });
 
@@ -55,7 +53,6 @@ const rightCurb = new THREE.Mesh(curbGeo, curbMat);
 rightCurb.position.set(roadWidth / 2, 0.175, 0);
 scene.add(rightCurb);
 
-// خطوط المنتصف المتقطعة
 const dashGeo = new THREE.PlaneGeometry(0.45, 6);
 const dashMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
 for (let z = -roadLength / 2; z < roadLength / 2; z += 14) {
@@ -65,7 +62,6 @@ for (let z = -roadLength / 2; z < roadLength / 2; z += 14) {
     scene.add(dash);
 }
 
-// أرضية محيطة داكنة متناسقة مع الأفق
 const groundGeo = new THREE.PlaneGeometry(2400, 2400);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.95 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -94,7 +90,6 @@ loader.load('hilux.glb', (gltf) => {
         }
     });
 
-    // تصغير المجسم لحجم واقعي وتوسيطه
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
@@ -161,7 +156,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 let velocity = new THREE.Vector3();
-let carHeading = 0; // زاوية حرة غير محدودة تسمح بالدوران 360 درجة وأكثر
+let carHeading = 0;
 let driftScore = 0;
 let camMode = 0;
 
@@ -175,25 +170,24 @@ function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
 
-    // محور الحركة الأمامي والجانبي بناءً على زاوية السيارة الحالية
-    const forwardDir = new THREE.Vector3(Math.sin(carHeading), 0, Math.cos(carHeading));
-    const rightDir = new THREE.Vector3(Math.cos(carHeading), 0, -Math.sin(carHeading));
+    // الاتجاه الأمامي والجانبي للسيارة بعد دوران المجسم
+    const forwardDir = new THREE.Vector3(-Math.sin(carHeading), 0, -Math.cos(carHeading));
+    const rightDir = new THREE.Vector3(-Math.cos(carHeading), 0, Math.sin(carHeading));
 
-    // التسارع والرجوع للخلف
+    // التسارع (بنزين) والرجوع للخلف / الفرامل
     if (keys.gas) velocity.addScaledVector(forwardDir, 44 * dt);
     if (keys.brake) velocity.addScaledVector(forwardDir, -30 * dt);
 
     const speed = velocity.length();
     const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
 
-    // دوران 360 درجة سلس سواء أثناء الحركة أو التفحيط والجلنط
+    // دوران 360 درجة مستمر
     if (steerInput !== 0) {
         const moveFactor = speed > 0.5 ? Math.min(1, speed / 4 + 0.35) : 0.6;
         const turnSpeed = keys.handbrake ? 3.8 : 2.5;
         carHeading += steerInput * turnSpeed * moveFactor * dt;
     }
 
-    // تفكيك السرعة إلى أمامية وجانبية للتحكم بالانجراف
     const forwardSpeed = velocity.dot(forwardDir);
     const lateralSpeed = velocity.dot(rightDir);
 
@@ -209,7 +203,7 @@ function animate() {
     // ميلان الهيكل مع الانجراف
     modelPivot.rotation.z = THREE.MathUtils.lerp(
         modelPivot.rotation.z,
-        -lateralSpeed * 0.015,
+        lateralSpeed * 0.015,
         10 * dt
     );
 
@@ -222,14 +216,14 @@ function animate() {
 
     document.getElementById('speed').innerText = Math.round(speed * 3.6);
 
-    // الكاميرا
+    // الكاميرا (خلف السيارة عند الضغط على البنزين)
     if (camMode === 0) {
-        const idealOffset = new THREE.Vector3(0, 2.8, -8).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading);
+        const idealOffset = new THREE.Vector3(0, 2.8, 8).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading);
         const idealPos = carContainer.position.clone().add(idealOffset);
         camera.position.lerp(idealPos, 7 * dt);
         camera.lookAt(carContainer.position.clone().add(new THREE.Vector3(0, 1.3, 0)));
     } else {
-        const hoodOffset = new THREE.Vector3(0, 1.7, 0.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading);
+        const hoodOffset = new THREE.Vector3(0, 1.7, -0.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading);
         camera.position.copy(carContainer.position).add(hoodOffset);
         const lookTarget = carContainer.position.clone().add(forwardDir.clone().multiplyScalar(15));
         camera.lookAt(lookTarget);
